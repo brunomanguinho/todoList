@@ -14,8 +14,10 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
+
 mongoose.connect("mongodb://localhost:27017/todolistDB", {useNewUrlParser: true});
 
+//Schemas & Models
 const itemsSchema = {
   name: String
 };
@@ -28,12 +30,12 @@ const listSchema = {
 const Item = mongoose.model("Item", itemsSchema);
 const List = mongoose.model("List", listSchema);
 
+// Default list
 item1 = insertItem("Wake up", false);
 item2 = insertItem("Get Coffee", false);
 item3 = insertItem("Go to work", false);
 
-// insertManyItems([item1, item2, item3]);
-
+//DB Call functions
 function findItems(){
   foundItems = Item.find({}, function(err, items){
     if (err){
@@ -46,17 +48,6 @@ function findItems(){
   return foundItems;
 }
 
-function insertManyItems(items){
-  Item.insertMany(items, function(err, docs){
-    if (err){
-      console.log(err);
-    }
-    else {
-      console.log(docs);
-    }
-  });
-}
-
 function insertItem(description, post){
   const item = new Item({
     name: description
@@ -67,6 +58,17 @@ function insertItem(description, post){
   }
 
   return item;
+}
+
+function insertManyItems(items){
+  Item.insertMany(items, function(err, docs){
+    if (err){
+      console.log(err);
+    }
+    else {
+      console.log(docs);
+    }
+  });
 }
 
 function deleteItemByid(id){
@@ -88,6 +90,7 @@ function deleteListByid(id, listName){
 }
 
 
+//get methods
 app.get("/", function(req, res) {
   const day = date.getDate();
 
@@ -104,6 +107,32 @@ app.get("/", function(req, res) {
 
 });
 
+app.get("/:route", function(req, res){
+  const customList = _.capitalize(req.params.route);
+
+  List.findOne({name: customList}, function(err, foundList){
+    if(err){
+      console.log(err);
+    }else if (!foundList){
+      const list = new List({
+        name: customList,
+        items: [item1, item2, item3]
+      });
+
+      list.save();
+
+      res.redirect("/" + customList);
+    }else{
+      res.render("list", {listTitle: foundList.name, newListItems: foundList.items});
+    }
+  })
+})
+
+app.get("/about", function(req, res){
+  res.render("about");
+});
+
+//post methods
 app.post("/", function(req, res){
 
   const item = req.body.newItem;
@@ -138,31 +167,6 @@ app.post("/delete", function(req, res){
   }
 
 
-});
-
-app.get("/:route", function(req, res){
-  const customList = _.capitalize(req.params.route);
-
-  List.findOne({name: customList}, function(err, foundList){
-    if(err){
-      console.log(err);
-    }else if (!foundList){
-      const list = new List({
-        name: customList,
-        items: [item1, item2, item3]
-      });
-
-      list.save();
-
-      res.redirect("/" + customList);
-    }else{
-      res.render("list", {listTitle: foundList.name, newListItems: foundList.items});
-    }
-  })
-})
-
-app.get("/about", function(req, res){
-  res.render("about");
 });
 
 app.listen(3000, function() {
